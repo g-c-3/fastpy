@@ -21,6 +21,7 @@
 # License: MIT
 # =============================================================================
 
+from __future__ import annotations
 from typing import Final
 
 # =============================================================================
@@ -245,7 +246,7 @@ def generate_white_pawn_moves(board: BoardState) -> list:
     In FastPy compiled mode, this returns a fixed-size stack array.
     The 218 limit is the maximum legal moves in any chess position.
     """
-    moves = []
+    moves: list = []
     empty: uint64 = board.empty_squares()
     pawns: uint64 = board.white_pawns
 
@@ -306,7 +307,7 @@ def generate_knight_moves(knights: uint64, friendly: uint64) -> list:
     Generate all knight moves from a bitboard of knights.
     Knights move in an L-shape — 8 possible target squares per knight.
     """
-    moves = []
+    moves: list = []
     temp: uint64 = knights
 
     while temp:
@@ -405,14 +406,14 @@ def alpha_beta(board: BoardState,
         return evaluate(board)
 
     # Generate moves (FastPy compiles move list to stack array)
+    moves: list = []
     if board.white_to_move:
         moves = generate_white_pawn_moves(board)
         moves += generate_knight_moves(
             board.white_knights,
             board.white_pieces()
         )
-    else:
-        moves = []  # Black move generation to be added
+    # Black move generation to be added
 
     # No moves — could be checkmate or stalemate
     if len(moves) == 0:
@@ -440,24 +441,24 @@ def alpha_beta(board: BoardState,
 # ENGINE ENTRY POINT
 # =============================================================================
 
-def find_best_move(board: BoardState, depth: int32):
+def find_best_move(board: BoardState, depth: int32) -> tuple:
     """
     Find the best move for the current position at the given search depth.
     Returns the best move as a (from_square, to_square) tuple.
     """
-    best_move = None
+    best_move: uint64 = 0
     best_score: int32 = NEG_INF
     alpha: int32 = NEG_INF
     beta:  int32 = INF
 
+    moves: list = []
     if board.white_to_move:
         moves = generate_white_pawn_moves(board)
         moves += generate_knight_moves(
             board.white_knights,
             board.white_pieces()
         )
-    else:
-        moves = []
+    # Black move generation to be added
 
     for move in moves:
         score: int32 = -alpha_beta(board, depth - 1, -beta, -alpha)
