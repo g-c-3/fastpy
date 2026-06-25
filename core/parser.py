@@ -119,9 +119,14 @@ class IRCall:
     """
     A function or method call: `popcount(board)`, `self.white_pieces()`
     func is a flat string: "popcount", "self.make_move"
+
+    receiver holds the object expression for method calls on non-name objects.
+    e.g. bin(board).count("1") → func="<expr>.count", receiver=IRCall("bin",[board])
+    This lets intrinsics.py pattern-match the full call chain.
     """
     func: str
     args: list
+    receiver: Any = None
 
 
 @dataclass
@@ -401,19 +406,23 @@ class ExpressionVisitor:
         return IRBoolOp(op=op, values=[self.visit(v) for v in node.values])
 
     def visit_Call(self, node: ast.Call) -> IRCall:
+        receiver = None
         if isinstance(node.func, ast.Name):
             func_name = node.func.id
         elif isinstance(node.func, ast.Attribute):
             obj = self.visit(node.func.value)
-            prefix = obj.name if isinstance(obj, IRName) else "<expr>"
-            func_name = f"{prefix}.{node.func.attr}"
+            if isinstance(obj, IRName):
+                func_name = f"{obj.name}.{node.func.attr}"
+            else:
+                func_name = f"<expr>.{node.func.attr}"
+                receiver = obj   # Preserve for intrinsics pattern matching
         else:
             raise FastPyParseError(
                 "Unsupported call target. FastPy supports simple function "
                 "calls and method calls only.",
                 node,
             )
-        return IRCall(func=func_name, args=[self.visit(a) for a in node.args])
+        return IRCall(func=func_name, args=[self.visit(a) for a in node.args], receiver=receiver)
 
     def visit_Attribute(self, node: ast.Attribute) -> IRAttribute:
         return IRAttribute(obj=self.visit(node.value), attr=node.attr)

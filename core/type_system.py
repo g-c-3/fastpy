@@ -53,6 +53,11 @@ _CPP_TYPE_TABLE: dict[str, str] = {
     "int64_t":  "int64_t",
     "uint32_t": "uint32_t",
     "void":     "void",
+    # Python-mode types — valid for the type checker, flagged by the emitter.
+    # `list`  → replace with `uint64[218]` for zero-allocation C++ compilation.
+    # `tuple` → replace with a packed uint64 move encoding.
+    "list":   "/* list: use uint64[218] for zero-allocation C++ */",
+    "tuple":  "/* tuple: use a packed uint64 move encoding */",
 }
 
 

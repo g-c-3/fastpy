@@ -535,10 +535,13 @@ class CppEmitter:
         if self._in_method and func.startswith("self."):
             func = func[len("self."):]
 
-        # bin(x).count("1") — intrinsics.py replaces this whole node.
-        # If it didn't intercept (no hook), emit a readable TODO.
-        if func == "<expr>.count":
-            return f"/* TODO intrinsic: __builtin_popcountll({args_str}) */"
+        # Method call on a non-name receiver (e.g. bin(board).count("1"))
+        # intrinsics.py replaces these patterns with hardware instructions.
+        # If no hook fired, emit readable C++ using the preserved receiver.
+        if func.startswith("<expr>.") and node.receiver is not None:
+            method   = func[len("<expr>."):]
+            receiver = self._emit_expr(node.receiver)
+            return f"{receiver}.{method}({args_str})"
 
         return f"{func}({args_str})"
 
@@ -587,13 +590,14 @@ def emit_module(
     """
     Emit a complete C++ source file from an IRModule and TypeRegistry.
 
+    Automatically wires in intrinsics.py if no hook is provided and
+    the module is available. Pass intrinsic_hook=False to disable.
+
     Args:
         ir:              IRModule from parser.parse_file()
         registry:        TypeRegistry from type_system.check_module()
         intrinsic_hook:  Optional callable(node) -> str | None
-                         Provided by intrinsics.py. Called before every
-                         expression node is emitted. Return a C++ string
-                         to override baseline emission, or None to fall back.
+                         Pass False to disable intrinsics entirely.
 
     Returns:
         A complete C++ source file as a string.
@@ -612,4 +616,19 @@ def emit_module(
             with open("engine.cpp", "w") as f:
                 f.write(cpp)
     """
-    return CppEmitter(ir, registry, intrinsic_hook).emit()
+    emitter = CppEmitter(ir, registry)
+
+    if intrinsic_hook is False:
+        pass  # Disabled explicitly — baseline C++ only
+    elif intrinsic_hook is not None:
+        emitter._intrinsic = intrinsic_hook
+    else:
+        # Auto-wire intrinsics.py if available
+        try:
+            from .intrinsics import IntrinsicMapper
+            mapper = IntrinsicMapper(emit_expr=emitter._emit_expr)
+            emitter._intrinsic = mapper.try_intrinsic
+        except ImportError:
+            pass  # intrinsics.py not yet built — fall back to baseline C++
+
+    return emitter.emit()
