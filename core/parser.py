@@ -649,15 +649,22 @@ class ModuleVisitor:
         if not isinstance(node.value, ast.Name):
             return
 
-        name = node.targets[0].id
+        name        = node.targets[0].id
         python_base = node.value.id
-        cpp_type = BUILTIN_TYPE_MAP.get(python_base)
-        if cpp_type is None:
-            return  # Not a recognised FastPy type alias
+
+        # If the alias name itself has a known C++ mapping (e.g. uint64 → uint64_t),
+        # use that directly rather than inheriting from the Python base type
+        # (which would wrongly map uint64 = int → int32_t).
+        if name in BUILTIN_TYPE_MAP:
+            cpp_type = BUILTIN_TYPE_MAP[name]
+        else:
+            cpp_type = BUILTIN_TYPE_MAP.get(python_base)
+            if cpp_type is None:
+                return  # Not a recognised FastPy type alias
 
         alias = IRTypeAlias(name=name, cpp_type=cpp_type)
         self.type_aliases.append(alias)
-        BUILTIN_TYPE_MAP[name] = cpp_type   # Register for downstream use
+        BUILTIN_TYPE_MAP[name] = cpp_type
 
     # -------------------------------------------------------------------------
     # Constant detection

@@ -138,18 +138,7 @@ class IntrinsicMapper:
 
         # ── POPCNT ────────────────────────────────────────────────────────────
         # Pattern:  bin(x).count("1")
-        # Matches:  IRCall(func="<expr>.count",
-        #               args=[IRLiteral("1", "str")],
-        #               receiver=IRCall(func="bin", args=[x]))
         result = self._match_popcnt(node)
-        if result is not None:
-            return result
-
-        # ── TZCNT ─────────────────────────────────────────────────────────────
-        # Pattern:  (x & -x).bit_length() - 1
-        # The outer subtraction (-1) is an IRBinOp handled in _match_binop.
-        # Here we match the inner call: (x & -x).bit_length()
-        result = self._match_bit_length(node)
         if result is not None:
             return result
 
@@ -186,47 +175,6 @@ class IntrinsicMapper:
         board = self._emit(node.receiver.args[0])
         return f"__builtin_popcountll({board})"
 
-    def _match_bit_length(self, node: IRCall) -> Optional[str]:
-        """
-        (x & -x).bit_length()  →  __builtin_ctzll(x) + 1
-
-        This is the inner call of the full TZCNT pattern:
-            (x & -x).bit_length() - 1  →  __builtin_ctzll(x)
-        The outer `- 1` is matched in _match_tzcnt() in _match_binop.
-
-        Shape:
-            IRCall(
-                func     = "<expr>.bit_length",
-                args     = [],
-                receiver = IRBinOp("&", x, IRUnaryOp("-", x))
-            )
-        where both x references are the same variable.
-        """
-        if node.func != "<expr>.bit_length":
-            return None
-        if len(node.args) != 0:
-            return None
-        if node.receiver is None:
-            return None
-        if not isinstance(node.receiver, IRBinOp):
-            return None
-
-        inner = node.receiver
-        if inner.op != "&":
-            return None
-        if not isinstance(inner.right, IRUnaryOp):
-            return None
-        if inner.right.op != "-":
-            return None
-
-        left_str  = self._emit(inner.left)
-        right_str = self._emit(inner.right.operand)
-        if left_str != right_str:
-            return None   # Not the same variable — not safe to replace
-
-        # Emit ctzll + 1 because bit_length() is 1-indexed
-        return f"(__builtin_ctzll({left_str}) + 1)"
-
     # =========================================================================
     # BINOP PATTERNS
     # =========================================================================
@@ -234,8 +182,8 @@ class IntrinsicMapper:
     def _match_binop(self, node: IRBinOp) -> Optional[str]:
         """Match binary-operation intrinsic patterns."""
 
-        # ── TZCNT (full pattern) ──────────────────────────────────────────────
-        # Pattern:  (x & -x).bit_length() - 1  →  __builtin_ctzll(x)
+        # ── TZCNT ─────────────────────────────────────────────────────────────
+        # Full pattern:  (x & -x).bit_length() - 1  →  __builtin_ctzll(x)
         result = self._match_tzcnt(node)
         if result is not None:
             return result
@@ -246,41 +194,58 @@ class IntrinsicMapper:
         """
         (x & -x).bit_length() - 1  →  __builtin_ctzll(x)
 
+        All conditions must match exactly. This pattern does NOT fire for
+        (x & -x).bit_length() - 2 or any other variation — each component
+        is checked before any C++ is emitted.
+
         Shape:
             IRBinOp(
                 op    = "-",
-                left  = IRCall(func="<expr>.bit_length",
-                               receiver=IRBinOp("&", x, IRUnaryOp("-", x))),
+                left  = IRCall(
+                            func     = "<expr>.bit_length",
+                            args     = [],
+                            receiver = IRBinOp("&", x, IRUnaryOp("-", x))
+                        ),
                 right = IRLiteral(value=1, kind="int")
             )
-
-        The inner IRCall is already matched by _match_bit_length which emits
-        `(__builtin_ctzll(x) + 1)`. Here we detect the `- 1` and collapse it:
-            (__builtin_ctzll(x) + 1) - 1  →  __builtin_ctzll(x)
+        where both x references are the same variable.
         """
+        # Outer: ... - 1
         if node.op != "-":
             return None
         if not isinstance(node.right, IRLiteral):
             return None
         if node.right.value != 1:
             return None
+
+        # Left: must be a bit_length() call
         if not isinstance(node.left, IRCall):
             return None
-
-        # Try to match the inner bit_length() call
-        inner_result = self._match_bit_length(node.left)
-        if inner_result is None:
+        if node.left.func != "<expr>.bit_length":
+            return None
+        if len(node.left.args) != 0:
+            return None
+        if node.left.receiver is None:
             return None
 
-        # inner_result is "(__builtin_ctzll(x) + 1)"
-        # We are subtracting 1 → collapse to __builtin_ctzll(x)
-        if inner_result.startswith("(__builtin_ctzll(") and \
-                inner_result.endswith(") + 1)"):
-            # Strip the outer parens and the + 1
-            ctz_call = inner_result[1:-len(") + 1)")]  # → "__builtin_ctzll(x)"
-            return ctz_call
+        # Receiver: must be (x & -x)
+        inner = node.left.receiver
+        if not isinstance(inner, IRBinOp):
+            return None
+        if inner.op != "&":
+            return None
+        if not isinstance(inner.right, IRUnaryOp):
+            return None
+        if inner.right.op != "-":
+            return None
 
-        return None
+        # Both sides of & must refer to the same variable
+        left_str  = self._emit(inner.left)
+        right_str = self._emit(inner.right.operand)
+        if left_str != right_str:
+            return None
+
+        return f"__builtin_ctzll({left_str})"
 
 
 # =============================================================================
