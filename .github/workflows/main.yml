@@ -1,0 +1,34 @@
+name: FastPy CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    name: Type Check & Python Smoke Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: FastPy type check — examples/simple_engine.py
+        run: python main.py check examples/simple_engine.py
+
+      - name: Python smoke test — run simple_engine.py directly
+        run: python examples/simple_engine.py
+
+      - name: FastPy emit — verify C++ output generates without error
+        run: python main.py emit examples/simple_engine.py -o /tmp/simple_engine.cpp
