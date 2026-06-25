@@ -32,3 +32,6 @@ jobs:
 
       - name: FastPy emit — verify C++ output generates without error
         run: python main.py emit examples/simple_engine.py -o /tmp/simple_engine.cpp
+ 
+      - name: Run test suite
+        run: python -m pytest tests/ -v
