@@ -63,6 +63,14 @@ When a decision changes, the old entry stays (struck through) and the new one is
 **Decision:** `emit_module()` automatically imports and wires `IntrinsicMapper` if `intrinsics.py` is available. Pass `intrinsic_hook=False` to disable.  
 **Rationale:** Callers should not need to know that intrinsics exist. The default experience is "compile with maximum hardware acceleration". Explicit opt-out is available for debugging or testing baseline C++ output.
 
+### D-14: Array parameters decay to pointers in C++
+Decision: Function parameters typed `uint64[218]` emit as `uint64_t* moves` (not `uint64_t moves`).  
+Rationale: C++ array parameters always decay to pointers. A bare `uint64_t moves` parameter cannot be subscripted. The emitter's `_cpp_param()` helper handles this distinction — local array declarations still emit `uint64_t moves[218] = {}`.
+
+### D-15: Emitter tracks function-scoped declarations
+Decision: `CppEmitter._fn_declared` tracks variables declared in the current function. Annotated assignments to already-declared variables emit as plain C++ assignments.
+Rationale: Python has flat function scope — a variable declared inside a while block is accessible in sibling while blocks. C++ has block scope — a declaration inside a while is invisible outside it. The tracker makes re-declarations in sibling blocks emit as plain assignments, matching Python semantics without needing pre-declaration patterns in engine.py source.
+
 ---
 
 ## Decisions Pending / Open Questions

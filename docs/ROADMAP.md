@@ -42,27 +42,27 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 - [x] `.github/workflows/ci.yml` — type check + smoke test + emit check on 3.11 & 3.12
 - [x] CI green on first commit
 - [x] `docs/` directory with PROJECT_CONTEXT, ARCHITECTURE, ROADMAP, DECISIONS, SESSION_LOG
-- [ ] **Add `python -m pytest tests/ -v` step to `ci.yml`** ← IMMEDIATE
+- [x] **Add `python -m pytest tests/ -v` step to `ci.yml`** ← IMMEDIATE
 
 ---
 
 ## Phase 2 — Package & Engine Foundation
 
 ### Sprint 6 — Package Infrastructure
-- [ ] `core/__init__.py` — makes `core/` a proper Python package
-- [ ] `pyproject.toml` — `pip install fastpy` + `fastpy` CLI entry point
-- [ ] Update `ci.yml` to test `pip install -e .` as well
+- [x] `core/__init__.py` — makes `core/` a proper Python package
+- [x] `pyproject.toml` — `pip install fastpy` + `fastpy` CLI entry point
+- [x] Update `ci.yml` to test `pip install -e .` as well
 
 ### Sprint 7 — FastPy-Engine Phase 1 Source
-- [ ] `fastpy-engine/engine.py` — first real engine source:
-  - [ ] `BoardState` struct (all 17 fields, starting positions)
-  - [ ] Bitboard utilities: `popcount`, `lsb`, `pop_lsb`, `north/south/east/west`
-  - [ ] White pawn move generation (single push, double push, captures, en passant)
-  - [ ] Knight move generation
-  - [ ] Alpha-beta search skeleton
-  - [ ] Material evaluation
-  - [ ] All using `uint64[218]` arrays — zero type errors required
-- [ ] `fastpy check engine.py` → zero errors
+- [x] `fastpy-engine/engine.py` — first real engine source:
+  - [x] `BoardState` struct (all 17 fields, starting positions)
+  - [x] Bitboard utilities: `popcount`, `lsb`, `pop_lsb`, `north/south/east/west`
+  - [x] White pawn move generation (single push, double push, captures, en passant)
+  - [x] Knight move generation
+  - [x] Alpha-beta search skeleton
+  - [x] Material evaluation
+  - [x] All using `uint64[218]` arrays — zero type errors required
+- [ ] `fastpy check engine.py` ;→ zero errors
 - [ ] `fastpy build engine.py --optimize O3` → compiles successfully
 
 ### Sprint 8 — UCI Protocol

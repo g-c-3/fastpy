@@ -4,6 +4,41 @@ Append-only. One entry per session. Most recent at top.
 
 ---
 
+## Session 3 — 2026-06-27
+
+**Focus:** Package infrastructure, subscript assignment support, fastpy-engine/engine.py Phase 1.
+
+**Completed:**
+- Fixed parser: subscript assignment targets (`moves[count] = value`) now parse correctly
+- Fixed type checker: subscript writes to declared arrays pass without annotation errors  
+- Added 7 new tests (parser + type_system) → 162/162 passing
+- Wrote `pyproject.toml` — pip install fastpy + fastpy CLI entry point
+- Wrote `core/__init__.py` — public API package exports
+- Wrote `fastpy_main.py` — pip install CLI shim
+- Updated `ci.yml` — `pip install -e ".[dev]"` before pytest, pytest runs first
+- Wrote `fastpy-engine/engine.py` — Phase 1: BoardState, bitboard utils, pawn/knight/king move generators (output-parameter pattern, uint64[218] stack arrays), alpha-beta skeleton, material evaluation. Zero type errors on fastpy check.
+- Emitter fixes IN PROGRESS: array param decay (uint64[218] → uint64_t*), fn-scoped variable re-declaration, bitwise right-operand parens
+
+**Not yet complete:**
+- `fastpy build engine.py` — still failing (emitter fixes not fully tested)
+- `_emit_binop` bitwise parens fix
+- `double` → `double_push` rename in engine.py
+- Emitter tests for new behaviours
+
+**Files changed:**
+- `core/parser.py` — `_resolve_target` subscript support
+- `core/type_system.py` — `_check_assign` subscript handling
+- `core/emitter.py` — `_fn_declared` tracking, `_cpp_param`, `_emit_assign` scope fix (IN PROGRESS)
+- `core/__init__.py` — NEW
+- `pyproject.toml` — NEW
+- `fastpy_main.py` — NEW
+- `.github/workflows/ci.yml` — updated
+- `tests/test_parser.py` — 4 new subscript tests
+- `tests/test_type_system.py` — 3 new subscript tests
+- `fastpy-engine/engine.py` — NEW (in fastpy-engine repo)
+
+---
+
 ## Session 2 — 2026-06-26 (afternoon)
 
 **Focus:** Test suite, bug fixes, project documentation infrastructure.
