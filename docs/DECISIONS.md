@@ -86,6 +86,15 @@ Rationale: C++ array parameters always decay to pointers. A bare `uint64_t moves
 **Decision:** The constant `BIT_ONE: Final[uint64] = 1` is used as `BIT_ONE << sq` to produce single-square bitboards.  
 **Rationale:** In C++, `1 << sq` when `sq > 30` is undefined behaviour — `1` is a 32-bit int literal. `BIT_ONE << sq` emits as `0x00000001ULL << sq` (uint64_t shift), which is correct for all 64 squares. FastPy has no explicit cast operator, so a typed constant is the idiomatic solution.
 
+### D-19: UCI loop in `if __name__ == '__main__':` — Python-only, FastPy-invisible
+**Decision:** All UCI I/O code (string helpers, search wrappers, main loop) lives inside the `if __name__ == '__main__':` block. FastPy's `_visit_top_level` handles `ast.If` by falling through silently, so the entire block is invisible to the transpiler.
+**Rationale:** UCI requires Python string operations (`chr`, `ord`, slicing, split) and I/O (`sys.stdin`, `sys.stdout`) that have no current FastPy dialect equivalent. The compiled binary's `main()` returns 0 — a stub. The real UCI loop runs via `python engine.py`. This is the correct architectural separation: engine CORE (speed contract, compiled) vs UCI GLUE (infrastructure, Python).
+**Tradeoff:** The compiled binary is not yet a functional UCI engine on its own. Full C++ UCI requires either FastPy I/O emission support (future sprint) or a handwritten C++ shim that calls the FastPy-compiled entry points.
+
+### D-20: Python search wrappers `_alpha_beta_py` / `_find_best_move_py`
+**Decision:** Python-mode copies of the compiled search functions, using Python lists instead of `uint64[218]` stack arrays. Live inside the `__main__` block.
+**Rationale:** `moves: uint64[218]` bare declarations (no initializer) are correct FastPy/C++ — the emitter hoists them as `uint64_t moves[218] = {}`. In Python they leave the variable unbound. No Python expression that produces a pre-allocated 218-element mutable sequence passes FastPy's parser without error. Python wrappers are the clean solution: same logic, Python-native data structures, completely separate from the compiled code.
+
 ---
 
 ## Decisions Pending / Open Questions

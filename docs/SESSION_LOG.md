@@ -4,6 +4,28 @@ Append-only. One entry per session. Most recent at top.
 
 ---
 
+## Session 5 — 2026-06-28
+
+**Focus:** Sprint 8 — UCI Protocol.
+
+**Completed:**
+- `engine.py`: Fixed `knight: uint64 = 1 << from_sq` → `BIT_ONE << from_sq` in `generate_knights`. The `1` literal is a 32-bit int in C++; `BIT_ONE` (constexpr uint64_t) ensures correct 64-bit shift for all 64 squares.
+- `engine.py`: Added complete UCI protocol in `if __name__ == '__main__':` block (FastPy silently skips this via `_visit_top_level`). Commands: `uci`, `isready`, `ucinewgame`, `position startpos [moves ...]`, `go [depth N]`, `stop`, `setoption`, `debug`, `quit`.
+- `engine.py`: Added `_alpha_beta_py` and `_find_best_move_py` Python-mode wrappers inside the `__main__` block. These mirror the compiled search functions but use Python lists instead of `uint64[218]` stack arrays (which are unbound in Python mode). UCI loop uses these wrappers.
+- `engine.py`: Added `_sq_to_str`, `_move_to_uci`, `_parse_sq`, `_parse_uci_move`, `_apply_position`, `_uci_loop` — all Python-only UCI helpers.
+- `fastpy-engine/tests/test_uci.py` — NEW: 21 UCI integration tests (subprocess-based). Tests handshake, position parsing, search output format, robustness. **21/21 passing in 0.71s**.
+- `fastpy check engine.py` → zero errors ✅
+- `fastpy emit engine.py` → 663 lines C++ ✅
+- `python engine.py` works as a full UCI engine — tested with Arena/Cutechess-style command sequences.
+
+**Architectural decision recorded:** UCI loop lives in `if __name__ == '__main__':` (D-19 below). Python search wrappers needed because `moves: uint64[218]` bare declarations are unbound in Python.
+
+**Files changed:**
+- `fastpy-engine/engine.py` — UCI block added, knight BIT_ONE fix
+- `fastpy-engine/tests/test_uci.py` — NEW
+
+---
+
 ## Session 4 — 2026-06-27 
 
 **Focus:** `make_move()`, two transpiler fixes, alpha-beta wired up.

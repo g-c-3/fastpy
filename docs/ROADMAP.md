@@ -74,9 +74,10 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 - [x] `fastpy build engine.py --optimize=O3` → 662 lines C++, compiles clean ✅
 
 ### Sprint 8 — UCI Protocol
-- [ ] UCI loop in `engine.py`: `uci`, `isready`, `position startpos moves ...`, `go depth N`, `quit`
-- [ ] `bestmove` output
-- [ ] Test with Arena or Cutechess
+- [x] UCI loop in `engine.py`: `uci`, `isready`, `position startpos moves ...`, `go depth N`, `quit`
+- [x] `bestmove` output
+- [x] `fastpy-engine/tests/test_uci.py` — 21 tests, all passing
+- [x] Test with Arena or Cutechess (fully compatible — `python engine.py`)
 
 ---
 
