@@ -42,7 +42,7 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 - [x] `.github/workflows/ci.yml` — type check + smoke test + emit check on 3.11 & 3.12
 - [x] CI green on first commit
 - [x] `docs/` directory with PROJECT_CONTEXT, ARCHITECTURE, ROADMAP, DECISIONS, SESSION_LOG
-- [x] **Add `python -m pytest tests/ -v` step to `ci.yml`** ← IMMEDIATE
+- [x] **Add `python -m pytest tests/ -v` step to `ci.yml`**
 
 ---
 
@@ -62,8 +62,8 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
   - [x] Alpha-beta search skeleton
   - [x] Material evaluation
   - [x] All using `uint64[218]` arrays — zero type errors required
-- [ ] `fastpy check engine.py` ;→ zero errors
-- [ ] `fastpy build engine.py --optimize O3` → compiles successfully
+- [x] `fastpy check engine.py` ;→ zero errors
+- [x] `fastpy build engine.py --optimize O3` → compiles successfully
 
 ### Sprint 8 — UCI Protocol
 - [ ] UCI loop in `engine.py`: `uci`, `isready`, `position startpos moves ...`, `go depth N`, `quit`

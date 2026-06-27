@@ -14,6 +14,7 @@ When a decision changes, the old entry stays (struck through) and the new one is
 ### D-02: MIT for fastpy, GPL v3 for fastpy-engine
 **Decision:** The transpiler tool (`fastpy`) is MIT. The chess engine (`fastpy-engine`) is GPL v3.  
 **Rationale:** MIT on the tool lets anyone — including commercial projects — use and embed FastPy freely. GPL v3 on the engine is consistent with the open-source chess engine community standard (Stockfish and most competitive engines are GPL). The two-repo split cleanly separates these licenses.
+**Resolved (Session 3):** `find_best_move` returns a single `uint64` (the packed move word). Score is a separate `int32` returned from `alpha_beta`. No struct needed for Phase 1.
 
 ### D-03: Pure Python — zero external dependencies
 **Decision:** FastPy uses only the Python standard library.  
@@ -67,9 +68,11 @@ When a decision changes, the old entry stays (struck through) and the new one is
 Decision: Function parameters typed `uint64[218]` emit as `uint64_t* moves` (not `uint64_t moves`).  
 Rationale: C++ array parameters always decay to pointers. A bare `uint64_t moves` parameter cannot be subscripted. The emitter's `_cpp_param()` helper handles this distinction — local array declarations still emit `uint64_t moves[218] = {}`.
 
-### D-15: Emitter tracks function-scoped declarations
-Decision: `CppEmitter._fn_declared` tracks variables declared in the current function. Annotated assignments to already-declared variables emit as plain C++ assignments.
-Rationale: Python has flat function scope — a variable declared inside a while block is accessible in sibling while blocks. C++ has block scope — a declaration inside a while is invisible outside it. The tracker makes re-declarations in sibling blocks emit as plain assignments, matching Python semantics without needing pre-declaration patterns in engine.py source.
+### D-15: Scalar locals hoisted to function scope (variable hoisting)
+**Decision:** `_emit_function()` calls `_collect_typed_scalars()` to find every typed scalar declaration anywhere in the function body tree (including inside while/if/for blocks), then emits them all as zero-initialised declarations at the top of the C++ function before the body.  
+**Rationale:** Python has flat function scope — a variable declared inside a `while` block is visible in all sibling blocks. C++ has block scope — it is not. Tracking with `_fn_declared` alone doesn't help because the C++ declaration still lands inside the block. Hoisting moves the declaration above all blocks so C++ sees it as function-scoped, matching Python semantics exactly.  
+**Tradeoff:** Hoisted variables are zero-initialised even if not reached on all paths. With `-O3` the compiler eliminates dead initialisations.  
+**Scope:** Only scalar typed assignments are hoisted. Arrays stay inline (size-specific syntax). `self.field` writes and subscript targets are excluded.
 
 ---
 

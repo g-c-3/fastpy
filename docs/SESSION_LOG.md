@@ -4,38 +4,37 @@ Append-only. One entry per session. Most recent at top.
 
 ---
 
-## Session 3 — 2026-06-27
+## Session 3 — 2026-06-27 (morning)
 
-**Focus:** Package infrastructure, subscript assignment support, fastpy-engine/engine.py Phase 1.
+**Focus:** Complete emitter fixes, variable hoisting, fastpy-engine/engine.py Phase 1 full build.
 
 **Completed:**
-- Fixed parser: subscript assignment targets (`moves[count] = value`) now parse correctly
-- Fixed type checker: subscript writes to declared arrays pass without annotation errors  
-- Added 7 new tests (parser + type_system) → 162/162 passing
-- Wrote `pyproject.toml` — pip install fastpy + fastpy CLI entry point
-- Wrote `core/__init__.py` — public API package exports
-- Wrote `fastpy_main.py` — pip install CLI shim
-- Updated `ci.yml` — `pip install -e ".[dev]"` before pytest, pytest runs first
-- Wrote `fastpy-engine/engine.py` — Phase 1: BoardState, bitboard utils, pawn/knight/king move generators (output-parameter pattern, uint64[218] stack arrays), alpha-beta skeleton, material evaluation. Zero type errors on fastpy check.
-- Emitter fixes IN PROGRESS: array param decay (uint64[218] → uint64_t*), fn-scoped variable re-declaration, bitwise right-operand parens
-
-**Not yet complete:**
-- `fastpy build engine.py` — still failing (emitter fixes not fully tested)
-- `_emit_binop` bitwise parens fix
-- `double` → `double_push` rename in engine.py
-- Emitter tests for new behaviours
+- Parser: subscript assignment targets (`moves[count] = value`, `moves[0] = 99`) — done
+- Type checker: subscript writes to declared arrays pass cleanly — done
+- Emitter fix 1: array params (`uint64[218]`) emit as `uint64_t* moves` via `_cpp_param()` helper
+- Emitter fix 2: variable hoisting — `_collect_typed_scalars()` pre-declares all scalar locals at C++ function scope before the body, matching Python's flat scoping model. Fixes "not declared in this scope" errors in sibling while blocks.
+- Emitter fix 3: bitwise right-operand explicit parens `(a & (b-1))` — silences `-Wparentheses`
+- `_fn_declared` set tracks hoisted vars so annotated re-assignments emit as plain C++ assignments
+- `double` → `double_push` rename in engine.py (C++ keyword conflict)
+- Unused `move` variable removed from `alpha_beta` (Phase 1 placeholder)
+- `main() -> int32` stub added to engine.py for linker
+- 8 emitter tests updated/added (5 paren format, 3 array decay/hoisting) → **168/168 passing**
+- `fastpy check engine.py` → zero errors ✅
+- `fastpy build engine.py --optimize=O3` → **compiles and runs** ✅
+- C++ output verified: `__builtin_popcountll`, `__builtin_ctzll`, `uint64_t* moves`, `uint64_t moves[218] = {}`
 
 **Files changed:**
 - `core/parser.py` — `_resolve_target` subscript support
 - `core/type_system.py` — `_check_assign` subscript handling
-- `core/emitter.py` — `_fn_declared` tracking, `_cpp_param`, `_emit_assign` scope fix (IN PROGRESS)
+- `core/emitter.py` — `_collect_typed_scalars`, `_cpp_param`, hoisting in `_emit_function`, `_fn_declared`, `_emit_binop` parens, `_emit_assign` scope fix
 - `core/__init__.py` — NEW
 - `pyproject.toml` — NEW
 - `fastpy_main.py` — NEW
 - `.github/workflows/ci.yml` — updated
 - `tests/test_parser.py` — 4 new subscript tests
 - `tests/test_type_system.py` — 3 new subscript tests
-- `fastpy-engine/engine.py` — NEW (in fastpy-engine repo)
+- `tests/test_emitter.py` — 8 tests updated/added
+- `fastpy-engine/engine.py` — NEW (Phase 1 complete, compiles)
 
 ---
 
