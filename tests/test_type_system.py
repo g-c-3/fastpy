@@ -261,3 +261,44 @@ class TestSubscriptAssignmentChecking:
         )
         result = check_from_source(src)
         assert result.ok, result.errors
+
+
+class TestParamFieldAssignment:
+
+    def test_param_field_write_no_annotation_needed(self):
+        """board.white_pawns = ... inside a function should not require annotation."""
+        src = (
+            "uint64 = int\nint32 = int\n"
+            "def f(board: uint64) -> uint64:\n"
+            "    board.white_pawns = 0\n"
+            "    board.en_passant_square = 0\n"
+            "    return board\n"
+        )
+        result = check_from_source(src)
+        assert result.ok, result.errors
+
+    def test_plain_local_still_requires_annotation(self):
+        """Unannotated plain local variable still triggers an error."""
+        src = (
+            "int32 = int\n"
+            "def f(x: int32) -> int32:\n"
+            "    y = x + 1\n"
+            "    return y\n"
+        )
+        result = check_from_source(src)
+        assert not result.ok
+        assert any("'y'" in str(e) for e in result.errors)
+
+    def test_self_field_write_no_annotation_needed(self):
+        """self.field = ... inside a method should still pass (existing behaviour)."""
+        src = (
+            "uint64 = int\n"
+            "class B:\n"
+            "    def __init__(self):\n"
+            "        self.x: uint64 = 0\n"
+            "    def reset(self) -> uint64:\n"
+            "        self.x = 0\n"
+            "        return self.x\n"
+        )
+        result = check_from_source(src)
+        assert result.ok, result.errors
