@@ -24,14 +24,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install FastPy (editable) + dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run test suite
+        run: python -m pytest tests/ -v
+
       - name: FastPy type check — examples/simple_engine.py
-        run: python main.py check examples/simple_engine.py
+        run: fastpy check examples/simple_engine.py
 
       - name: Python smoke test — run simple_engine.py directly
         run: python examples/simple_engine.py
 
       - name: FastPy emit — verify C++ output generates without error
-        run: python main.py emit examples/simple_engine.py -o /tmp/simple_engine.cpp
- 
-      - name: Run test suite
-        run: python -m pytest tests/ -v
+        run: fastpy emit examples/simple_engine.py -o /tmp/simple_engine.cpp
