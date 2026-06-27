@@ -255,10 +255,10 @@ will make FastPy real.
 
 AI Collaboration
 
-Mind (Gemini): Ideation and brainstorming
-Body (ChatGPT): System design, planning, and implementation
-Soul (Claude): Refinement, clarity, and documentation
-Human (Gokul Chandar): Final decisions, integration, testing, debugging, and project ownership
+**Mind (Gemini):** Ideation and brainstorming
+**Body (ChatGPT):** System design, planning, and implementation
+**Soul (Claude):** Refinement, clarity, and documentation
+**Human (Gokul Chandar):** Final decisions, integration, testing, debugging, and project ownership
 
 ---
 
