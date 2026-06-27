@@ -230,23 +230,23 @@ class TestExpressionEmission:
 
     def test_bitwise_or_has_parens(self):
         cpp = self._emit_return_expr("x | y")
-        assert "(x | y)" in cpp
+        assert "(x | (y))" in cpp
 
     def test_bitwise_and_has_parens(self):
         cpp = self._emit_return_expr("x & y")
-        assert "(x & y)" in cpp
+        assert "(x & (y))" in cpp
 
     def test_bitwise_xor_has_parens(self):
         cpp = self._emit_return_expr("x ^ y")
-        assert "(x ^ y)" in cpp
+        assert "(x ^ (y))" in cpp
 
     def test_left_shift_has_parens(self):
         cpp = self._emit_return_expr("x << 8")
-        assert "(x << 8)" in cpp
+        assert "(x << (8))" in cpp
 
     def test_right_shift_has_parens(self):
         cpp = self._emit_return_expr("x >> 1")
-        assert "(x >> 1)" in cpp
+        assert "(x >> (1))" in cpp
 
     def test_addition_no_parens(self):
         cpp = self._emit_return_expr("x + y")
@@ -285,3 +285,102 @@ class TestExpressionEmission:
         cpp = self._emit_return_expr("x if x > y else y")
         assert "?" in cpp
         assert ":" in cpp
+
+
+class TestArrayParamDecay:
+
+    def _check(self, src):
+        from core.parser import parse_source
+        from core.type_system import check_module
+        from core.emitter import emit_module
+        ir = parse_source(src)
+        result = check_module(ir)
+        return emit_module(ir, result.registry)
+
+    def test_array_param_decays_to_pointer(self):
+        src = (
+            "uint64 = int\nint32 = int\n"
+            "def fill(moves: uint64[218], count: int32) -> int32:\n"
+            "    return count\n"
+        )
+        cpp = self._check(src)
+        assert "uint64_t* moves" in cpp
+
+    def test_array_local_stays_stack(self):
+        src = (
+            "uint64 = int\nint32 = int\n"
+            "def f(count: int32) -> int32:\n"
+            "    moves: uint64[218]\n"
+            "    return count\n"
+        )
+        cpp = self._check(src)
+        assert "uint64_t moves[218]" in cpp
+
+    def test_subscript_write_emits_assignment(self):
+        src = (
+            "uint64 = int\nint32 = int\n"
+            "def fill(moves: uint64[218], count: int32) -> int32:\n"
+            "    moves[count] = 42\n"
+            "    return count\n"
+        )
+        cpp = self._check(src)
+        assert "moves[count] = 42" in cpp
+
+
+class TestVariableHoisting:
+
+    def _emit(self, src):
+        from core.parser import parse_source
+        from core.type_system import check_module
+        from core.emitter import emit_module
+        ir = parse_source(src)
+        result = check_module(ir)
+        return emit_module(ir, result.registry)
+
+    def test_var_declared_in_while_accessible_in_sibling_while(self):
+        """
+        Python flat scope: a variable declared inside one while block
+        must be accessible in a sibling while block.
+        The emitter achieves this by hoisting all scalars to function top.
+        """
+        src = (
+            "uint64 = int\nint32 = int\n"
+            "def f(a: int32, b: int32) -> int32:\n"
+            "    while a:\n"
+            "        x: int32 = a\n"
+            "        a -= 1\n"
+            "    while b:\n"
+            "        x = b\n"   # x not declared here but must be in scope
+            "        b -= 1\n"
+            "    return x\n"
+        )
+        cpp = self._emit(src)
+        fn_lines = cpp[cpp.index("int32_t f("):]
+        # x must be declared before the first while, not inside it
+        x_decl_pos   = fn_lines.index("int32_t x = 0")
+        first_while   = fn_lines.index("while (a)")
+        assert x_decl_pos < first_while, "x should be hoisted above first while"
+
+    def test_hoisted_uint64_gets_ull_zero(self):
+        src = (
+            "uint64 = int\nint32 = int\n"
+            "def f(a: uint64) -> uint64:\n"
+            "    while a:\n"
+            "        temp: uint64 = a\n"
+            "        a = 0\n"
+            "    return temp\n"
+        )
+        cpp = self._emit(src)
+        assert "uint64_t temp = 0ULL" in cpp
+
+    def test_hoisted_bool_gets_false_zero(self):
+        src = (
+            "bool8 = bool\nint32 = int\n"
+            "def f(a: int32) -> bool8:\n"
+            "    while a:\n"
+            "        found: bool8 = True\n"
+            "        a -= 1\n"
+            "    return found\n"
+        )
+        cpp = self._emit(src)
+        assert "bool found = false" in cpp

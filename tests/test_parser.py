@@ -360,3 +360,52 @@ class TestParseErrors:
         ir = parse_source("import sys\nfrom typing import Final\nuint64 = int")
         assert len(ir.functions) == 0
         assert len(ir.type_aliases) == 1
+
+
+class TestSubscriptAssignmentTarget:
+
+    def test_name_index_parses(self):
+        src = TYPE_ALIASES + (
+            "def f(count: int32) -> int32:\n"
+            "    moves: uint64[218]\n"
+            "    moves[count] = 42\n"
+            "    return count\n"
+        )
+        ir = parse_source(src)
+        stmts = ir.functions[0].body
+        assign = stmts[1]  # moves[count] = 42
+        assert isinstance(assign, IRAssign)
+        assert assign.target == "moves[count]"
+
+    def test_constant_index_parses(self):
+        src = TYPE_ALIASES + (
+            "def f() -> int32:\n"
+            "    moves: uint64[218]\n"
+            "    moves[0] = 99\n"
+            "    return 0\n"
+        )
+        ir = parse_source(src)
+        assign = ir.functions[0].body[1]
+        assert assign.target == "moves[0]"
+        assert isinstance(assign.value, IRLiteral)
+        assert assign.value.value == 99
+
+    def test_subscript_target_has_no_type_annotation(self):
+        src = TYPE_ALIASES + (
+            "def f(count: int32) -> int32:\n"
+            "    moves: uint64[218]\n"
+            "    moves[count] = 0\n"
+            "    return count\n"
+        )
+        ir = parse_source(src)
+        assign = ir.functions[0].body[1]
+        assert assign.type_name is None
+
+    def test_unsupported_subscript_target_raises(self):
+        # Complex object like obj.arr[i] is not supported
+        with pytest.raises(FastPyParseError):
+            parse_source(TYPE_ALIASES + (
+                "def f(i: int32) -> int32:\n"
+                "    self.moves[i] = 0\n"
+                "    return i\n"
+            ))

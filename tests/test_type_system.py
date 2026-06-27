@@ -226,3 +226,38 @@ class TestTypeCheckFailures:
         src = TYPE_ALIASES + "def f(x) -> int32:\n    return 0"
         result = check_from_source(src)
         assert "error" in result.report().lower()
+
+
+class TestSubscriptAssignmentChecking:
+
+    def test_subscript_to_declared_array_no_error(self):
+        src = TYPE_ALIASES + (
+            "def f(count: int32) -> int32:\n"
+            "    moves: uint64[218]\n"
+            "    moves[count] = 0\n"
+            "    return count\n"
+        )
+        result = check_from_source(src)
+        assert result.ok, result.errors
+
+    def test_subscript_to_undeclared_array_is_error(self):
+        src = TYPE_ALIASES + (
+            "def f(count: int32) -> int32:\n"
+            "    moves[count] = 0\n"
+            "    return count\n"
+        )
+        result = check_from_source(src)
+        assert not result.ok
+        assert any("'moves'" in str(e) for e in result.errors)
+
+    def test_multiple_subscript_writes_no_error(self):
+        src = TYPE_ALIASES + (
+            "def f(count: int32) -> int32:\n"
+            "    moves: uint64[218]\n"
+            "    moves[0] = 1\n"
+            "    moves[1] = 2\n"
+            "    moves[count] = 3\n"
+            "    return count\n"
+        )
+        result = check_from_source(src)
+        assert result.ok, result.errors
