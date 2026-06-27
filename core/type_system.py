@@ -371,6 +371,20 @@ class TypeChecker:
     ) -> None:
         target   = stmt.target
         loc      = f"{func_name} var '{target}'"
+
+        # Subscript assignment: `moves[count] = value`
+        # This is a write to an already-declared array — not a new declaration.
+        # The base array (`moves`) must already be declared; no annotation needed.
+        if "[" in target and not target.startswith("self."):
+            base = target[:target.index("[")]
+            if base not in declared:
+                self._error(
+                    loc,
+                    f"subscript assignment to '{target}': base array '{base}' "
+                    f"has not been declared. Declare it first: `{base}: uint64[218]`"
+                )
+            return  # No further checks — it's a write, not a declaration
+
         is_first = target not in declared
 
         if stmt.type_name is not None:

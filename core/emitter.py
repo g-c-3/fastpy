@@ -163,6 +163,9 @@ class CppEmitter:
         # Whether we are currently inside a struct method —
         # controls self. stripping in attribute/target resolution.
         self._in_method: bool = False
+        # Variables declared in the current function scope.
+        # Reset at the start of each _emit_function call.
+        self._fn_declared: set[str] = set()
 
     # =========================================================================
     # TOP-LEVEL
@@ -288,24 +291,88 @@ class CppEmitter:
     def _emit_function(self, func: IRFunction, in_struct: bool) -> None:
         self._in_method = in_struct
 
+        # Parameters are pre-declared in C++ — never re-emit their type.
+        self._fn_declared: set[str] = {p.name for p in func.params}
+
         ret_cpp = self.registry.resolve(func.return_type)
         if ret_cpp == "list":
-            # Placeholder — resolve to void until move-list type is finalised
             ret_cpp = "void"
 
-        params_str = ", ".join(
-            f"{self.registry.resolve(p.type_name)} {p.name}"
-            for p in func.params
-        )
+        params_str = ", ".join(self._cpp_param(p) for p in func.params)
 
         const_suffix = " const" if in_struct else ""
         self.out.line(f"{ret_cpp} {func.name}({params_str}){const_suffix} {{")
         self.out.indent()
+
+        # ── Variable hoisting ─────────────────────────────────────────────────
+        # Python has flat function scope: a variable declared inside a while
+        # block is visible in all sibling blocks.  C++ has block scope: it is
+        # not.  Fix: collect every typed scalar declaration anywhere in the body
+        # and emit them all at the top of the function, zero-initialised.
+        # Annotated assignments in the body then emit as plain C++ assignments
+        # (no type prefix) because _fn_declared already contains the name.
+        #
+        # Array declarations stay inline — they need size-specific syntax.
+        hoisted: list[tuple[str, str]] = []
+        hoisted_seen: set[str] = set()
+        self._collect_typed_scalars(func.body, hoisted, hoisted_seen)
+
+        for name, cpp_type in hoisted:
+            if name not in self._fn_declared:
+                self._fn_declared.add(name)
+                zero = "0ULL" if cpp_type == "uint64_t" else \
+                       "false" if cpp_type == "bool" else "0"
+                self.out.line(f"{cpp_type} {name} = {zero};")
+
         self._emit_body(func.body)
         self.out.dedent()
         self.out.line("}")
 
         self._in_method = False
+
+    def _collect_typed_scalars(
+        self,
+        stmts: list,
+        result: list,
+        seen: set,
+    ) -> None:
+        """
+        Recursively walk a statement list and collect (name, cpp_type) for every
+        typed scalar first-use assignment found anywhere in the body tree.
+
+        Skips array declarations, self.field writes, and subscript targets —
+        none of those need hoisting.
+
+        Called by _emit_function to pre-declare all locals at function scope,
+        matching Python's flat scoping model in the generated C++.
+        """
+        for stmt in stmts:
+            t = type(stmt).__name__
+            if t == "IRAssign" and stmt.type_name and "[" not in stmt.type_name:
+                name = stmt.target
+                if "[" not in name and not name.startswith("self.") and name not in seen:
+                    cpp_type = self.registry.resolve(stmt.type_name)
+                    result.append((name, cpp_type))
+                    seen.add(name)
+            if t == "IRIf":
+                self._collect_typed_scalars(stmt.body,   result, seen)
+                self._collect_typed_scalars(stmt.orelse, result, seen)
+            elif t in ("IRWhile", "IRFor"):
+                self._collect_typed_scalars(stmt.body, result, seen)
+
+    def _cpp_param(self, param: IRParam) -> str:
+        """
+        Emit a single function parameter declaration.
+
+        Fixed-size array parameters (e.g. moves: uint64[218]) decay to a
+        C++ pointer so array subscript operators work inside the function:
+            Python:  moves: uint64[218]  →  C++: uint64_t* moves
+        All other parameters use their direct C++ type.
+        """
+        if "[" in param.type_name:
+            cpp_base, _ = self.registry.resolve_array(param.type_name)
+            return f"{cpp_base}* {param.name}"
+        return f"{self.registry.resolve(param.type_name)} {param.name}"
 
     # =========================================================================
     # BODY & STATEMENTS
@@ -340,21 +407,37 @@ class CppEmitter:
         value  = self._emit_expr(stmt.value) if stmt.value is not None else None
 
         if stmt.type_name is not None:
-            # Typed declaration
+            # Typed declaration — but may already be declared in this function scope.
             if "[" in stmt.type_name:
                 # Fixed-size array: `moves: uint64[218]` → `uint64_t moves[218] = {}`
                 cpp_base, size = self.registry.resolve_array(stmt.type_name)
                 if size > 0:
                     self.out.line(f"{cpp_base} {target}[{size}] = {{}};")
+                    self._fn_declared.add(target)
                     return
+
             cpp_type = self.registry.resolve(stmt.type_name)
-            if value is not None:
-                if cpp_type == "uint64_t" and isinstance(stmt.value, IRLiteral) \
-                        and stmt.value.kind == "int":
-                    value = self._as_ull(stmt.value.value)
-                self.out.line(f"{cpp_type} {target} = {value};")
+
+            if target in self._fn_declared:
+                # Variable already declared in this function — emit as reassignment.
+                # This handles the common Python pattern where the same loop variable
+                # is annotated on first use inside one block and reused in another.
+                if value is not None:
+                    if cpp_type == "uint64_t" and isinstance(stmt.value, IRLiteral) \
+                            and stmt.value.kind == "int":
+                        value = self._as_ull(stmt.value.value)
+                    self.out.line(f"{target} = {value};")
+                # else: bare re-declaration with no value — no-op in C++
             else:
-                self.out.line(f"{cpp_type} {target};")
+                # First declaration in this function scope
+                self._fn_declared.add(target)
+                if value is not None:
+                    if cpp_type == "uint64_t" and isinstance(stmt.value, IRLiteral) \
+                            and stmt.value.kind == "int":
+                        value = self._as_ull(stmt.value.value)
+                    self.out.line(f"{cpp_type} {target} = {value};")
+                else:
+                    self.out.line(f"{cpp_type} {target};")
         else:
             # Un-annotated re-assignment to an already-declared variable
             if value is not None:
@@ -505,9 +588,12 @@ class CppEmitter:
         cpp_op = _CPP_BIN_OP.get(node.op, node.op)
         left   = self._emit_expr(node.left)
         right  = self._emit_expr(node.right)
-        # Bitwise operators: wrap operands in parens to guard precedence
+        # Bitwise operators: wrap the entire expression and also wrap the right
+        # operand explicitly.  Without the inner parens, GCC/Clang emit
+        # -Wparentheses for expressions like `(board & board - 1)` even though
+        # C++ precedence makes them correct.  `(board & (board - 1))` is clear.
         if node.op in _NEEDS_PARENS:
-            return f"({left} {cpp_op} {right})"
+            return f"({left} {cpp_op} ({right}))"
         return f"{left} {cpp_op} {right}"
 
     def _emit_unaryop(self, node: IRUnaryOp) -> str:

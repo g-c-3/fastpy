@@ -573,15 +573,31 @@ class StatementVisitor:
         return None
 
     def _resolve_target(self, node: ast.expr) -> str:
-        """Flatten an assignment target to a flat string: `x`, `self.field`"""
+        """
+        Flatten an assignment target to a flat string.
+
+        Handles:
+          x              → "x"
+          self.field     → "self.field"
+          moves[count]   → "moves[count]"   (simple Name index only)
+          moves[0]       → "moves[0]"       (integer constant index)
+        """
         if isinstance(node, ast.Name):
             return node.id
         if isinstance(node, ast.Attribute):
             if isinstance(node.value, ast.Name):
                 return f"{node.value.id}.{node.attr}"
+        if isinstance(node, ast.Subscript):
+            if isinstance(node.value, ast.Name):
+                obj = node.value.id
+                # Accept Name or integer-constant indices — covers all engine patterns
+                if isinstance(node.slice, ast.Name):
+                    return f"{obj}[{node.slice.id}]"
+                if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, int):
+                    return f"{obj}[{node.slice.value}]"
         raise FastPyParseError(
             f"Unsupported assignment target. "
-            f"FastPy supports simple names and `self.attribute` only.",
+            f"FastPy supports simple names, `self.attribute`, and `array[index]` only.",
             node,
         )
 
