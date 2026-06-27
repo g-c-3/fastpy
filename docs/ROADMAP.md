@@ -65,6 +65,14 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 - [x] `fastpy check engine.py` ;→ zero errors
 - [x] `fastpy build engine.py --optimize O3` → compiles successfully
 
+### Sprint 7.5 — Make/Unmake & Real Search
+- [x] `BIT_ONE: Final[uint64] = 1` constant for correct 64-bit single-square masks
+- [x] `make_move(board, move) -> BoardState` — value-copy semantics, handles captures, en passant, double-push EP square, promotions (queen/knight/bishop)
+- [x] `alpha_beta()` wired up with real `make_move` recursion — no more static eval placeholder
+- [x] Emitter: `_HOISTABLE_TYPES` guard — struct types not hoisted (invalid C++ zero-init)
+- [x] Type checker: `param.field` writes exempt from first-use annotation (same as `self.field`)
+- [x] `fastpy build engine.py --optimize=O3` → 662 lines C++, compiles clean ✅
+
 ### Sprint 8 — UCI Protocol
 - [ ] UCI loop in `engine.py`: `uci`, `isready`, `position startpos moves ...`, `go depth N`, `quit`
 - [ ] `bestmove` output

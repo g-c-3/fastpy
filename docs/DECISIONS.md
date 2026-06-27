@@ -74,19 +74,33 @@ Rationale: C++ array parameters always decay to pointers. A bare `uint64_t moves
 **Tradeoff:** Hoisted variables are zero-initialised even if not reached on all paths. With `-O3` the compiler eliminates dead initialisations.  
 **Scope:** Only scalar typed assignments are hoisted. Arrays stay inline (size-specific syntax). `self.field` writes and subscript targets are excluded.
 
+### D-16: `param.field` writes exempt from first-use annotation (same as `self.field`)
+**Decision:** In `_check_assign`, any target containing `.` is treated as a struct member write and exempt from the first-use annotation requirement. Changed from `not target.startswith("self.")` to `"." not in target`.  
+**Rationale:** `make_move` modifies `board.white_pawns`, `board.en_passant_square`, etc. These are fields of a parameter struct, already typed in the struct definition. Requiring annotations here would force redundant `board.white_pawns: uint64 = ...` everywhere — wrong semantics and noisy. Any `x.y = value` is a field write, not a new local variable.
+
+### D-17: Struct types excluded from variable hoisting
+**Decision:** The `_HOISTABLE_TYPES` set in `emitter.py` lists only C++ primitive types. Non-primitive types (e.g. `BoardState`) are not hoisted to function scope — they are declared inline where first used.  
+**Rationale:** Hoisting requires a valid zero-initialiser (`= 0`, `= 0ULL`, `= false`). `BoardState new_board = 0` is invalid C++ — structs need either default construction or explicit initialisation from a function call. Structs are never used across sibling while blocks in practice (they're declared and consumed within the same block), so hoisting is unnecessary for them.
+
+### D-18: `BIT_ONE: Final[uint64] = 1` for 64-bit single-square masks
+**Decision:** The constant `BIT_ONE: Final[uint64] = 1` is used as `BIT_ONE << sq` to produce single-square bitboards.  
+**Rationale:** In C++, `1 << sq` when `sq > 30` is undefined behaviour — `1` is a 32-bit int literal. `BIT_ONE << sq` emits as `0x00000001ULL << sq` (uint64_t shift), which is correct for all 64 squares. FastPy has no explicit cast operator, so a typed constant is the idiomatic solution.
+
 ---
 
 ## Decisions Pending / Open Questions
 
-### DP-01: Move encoding in fastpy-engine
-**Options:**
-- A) Pack `from_sq | (to_sq << 6)` into a single `uint64` — simple, one array
-- B) Separate `int32[218]` arrays for from/to squares — readable but two arrays
-- C) Full move struct (from, to, piece, flags) packed into 32 bits — extensible
+*(none currently open)*
 
-**Current lean:** Option A for Phase 1 simplicity. Revisit for Phase 3 when promotions and special moves need flags.
+---
+
+## Resolved Pending Decisions
+
+### DP-01: Move encoding in fastpy-engine
+**Resolved (Session 3):** Option A — pack `from_sq | (to_sq << 6)` into a single `uint64`.  
+Extended in Session 3 to include promotion bits (12-13) and flag bits (14-15):
 
 ### DP-02: Return type for find_best_move
-**Problem:** `find_best_move` currently returns a Python `tuple` (best_move, best_score). C++ cannot return a tuple from a function without a struct.  
-**Options:** Return packed `uint64`, use output parameters, return a result struct.  
-**Status:** Deferred until `fastpy-engine/engine.py` is written.
+**Resolved (Session 4):** Returns a single `uint64` (packed move word). Score from `alpha_beta()` separately. `find_best_move` loop now calls `make_move(board, move)` before recursing, matching `alpha_beta`. Both functions use value-copy board semantics consistently.
+
+---

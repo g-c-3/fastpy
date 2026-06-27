@@ -4,6 +4,24 @@ Append-only. One entry per session. Most recent at top.
 
 ---
 
+## Session 4 — 2026-06-27 
+
+**Focus:** `make_move()`, two transpiler fixes, alpha-beta wired up.
+
+**Completed:**
+- Emitter: `_HOISTABLE_TYPES` set — hoisting now skips struct types (e.g. `BoardState`). `BoardState new_board = 0` is invalid C++; structs are declared inline where first used.
+- Type checker: dotted targets (`board.white_pawns = ...`) now exempt from first-use annotation requirement. `"." not in target` replaces `not target.startswith("self.")` — covers both `self.field` and `param.field` struct writes.
+- 3 new type_system tests → **171/171 passing**
+- `engine.py`: Added `BIT_ONE: Final[uint64] = 1` constant — ensures `BIT_ONE << sq` emits as `uint64_t` shift (plain `1 << sq` is 32-bit int in C++, UB for sq > 30)
+- `engine.py`: `make_move(board, move) -> BoardState` — full implementation. Value-copy semantics: takes BoardState by value, modifies the local copy, returns it. Handles: captures (all 6 piece types), en passant, double-push ep square update, promotions (queen/knight/bishop), side-to-move flip.
+- `alpha_beta()`: wired up with `new_board: BoardState = make_move(board, moves[i])` — real recursive search, no more static evaluation placeholder.
+- `fastpy check engine.py` → zero errors ✅
+- `fastpy build engine.py --optimize=O3` → **662 lines C++, compiles clean** ✅
+
+**Key C++ output verified:**
+
+---
+
 ## Session 3 — 2026-06-27 (morning)
 
 **Focus:** Complete emitter fixes, variable hoisting, fastpy-engine/engine.py Phase 1 full build.
