@@ -136,6 +136,13 @@ _CPP_CMP_OP: dict[str, str] = {
 # than comparison operators, which trips up even experienced C++ programmers.
 _NEEDS_PARENS: set[str] = {"|", "&", "^", "<<", ">>"}
 
+# C++ primitive types that can be zero-initialised during variable hoisting.
+# Struct/class types (e.g. BoardState) are excluded: `BoardState x = 0` is
+# invalid C++.  Non-primitive locals are declared inline where they first appear.
+_HOISTABLE_TYPES: set[str] = {
+    "uint64_t", "int64_t", "uint32_t", "int32_t", "int", "bool",
+}
+
 
 # =============================================================================
 # CPP EMITTER
@@ -318,7 +325,7 @@ class CppEmitter:
         self._collect_typed_scalars(func.body, hoisted, hoisted_seen)
 
         for name, cpp_type in hoisted:
-            if name not in self._fn_declared:
+            if name not in self._fn_declared and cpp_type in _HOISTABLE_TYPES:
                 self._fn_declared.add(name)
                 zero = "0ULL" if cpp_type == "uint64_t" else \
                        "false" if cpp_type == "bool" else "0"

@@ -410,7 +410,10 @@ class TypeChecker:
 
         else:
             # Un-annotated assignment
-            if is_first and not target.startswith("self."):
+            # Dotted targets (`self.field`, `board.field`) are struct member writes
+            # — the type is declared on the struct, not the local scope.
+            # Only plain local variable names require a first-use annotation.
+            if is_first and "." not in target:
                 # First use without a type annotation — flag it
                 self._error(
                     loc,
