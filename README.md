@@ -257,9 +257,9 @@ will make FastPy real.
 
 * **Mind (Gemini):** Ideation and brainstorming
 
-* **Body (ChatGPT):** System design, planning, and implementation
+* **Body (ChatGPT):** Planning and documentation 
 
-* **Soul (Claude):** Refinement, clarity, and documentation
+* **Soul (Claude):** System design, coding, and implementation
 
 * **Human (Gokul Chandar):** Final decisions, integration, testing, debugging, and project ownership
 
