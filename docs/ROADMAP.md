@@ -83,14 +83,15 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 
 ## Phase 3 — Complete Move Generation
 
-- [ ] Bishop move generation (diagonal rays)
-- [ ] Rook move generation (horizontal/vertical rays)
-- [ ] Queen = bishop | rook
-- [ ] King moves (all 8 directions, one square)
-- [ ] Castling (rights tracking, legal castling)
-- [ ] En passant capture
-- [ ] Check detection
-- [ ] Legal move filtering (king cannot move into check)
+- [x] Bishop move generation (diagonal rays)
+- [x] Rook move generation (horizontal/vertical rays)
+- [x] Queen = bishop | rook
+- [x] King moves (all 8 directions, one square)
+- [x] Castling (rights tracking, legal castling)
+- [x] En passant capture
+- [x] Check detection
+- [x] Legal move filtering (king cannot move into check)
+- [x] Perft(1)=20, Perft(2)=400, Perft(3)=8902, Perft(4)=197281
 - [ ] Perft(5) from starting position = 4,865,609 nodes ← correctness benchmark
 
 ---

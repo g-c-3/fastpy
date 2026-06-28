@@ -95,6 +95,15 @@ Rationale: C++ array parameters always decay to pointers. A bare `uint64_t moves
 **Decision:** Python-mode copies of the compiled search functions, using Python lists instead of `uint64[218]` stack arrays. Live inside the `__main__` block.
 **Rationale:** `moves: uint64[218]` bare declarations (no initializer) are correct FastPy/C++ — the emitter hoists them as `uint64_t moves[218] = {}`. In Python they leave the variable unbound. No Python expression that produces a pre-allocated 218-element mutable sequence passes FastPy's parser without error. Python wrappers are the clean solution: same logic, Python-native data structures, completely separate from the compiled code.
 
+## D-21: Python make_move copy semantics (2026-06-28)
+**Problem:** Python passes BoardState by reference; C++ copies structs by value on function entry. make_move() modifies its `board` parameter in-place in Python, corrupting the caller's board across loop iterations.
+**Decision:** All Python-mode wrappers in __main__ use `copy.copy(board)` before every make_move() call. Compiled functions (alpha_beta, perft, generate_legal_moves) are correct as-is because C++ provides value semantics automatically.
+**Note:** This is a Python-mode-only concern. The FastPy compiled output is correct without changes.
+
+## D-22: Castling rights use positive masks (2026-06-28)
+**Problem:** `board.castling_rights & ~CASTLE_WK` uses bitwise NOT on a Python int, which gives a negative result (Python's infinite-precision integers have no fixed width). The C++ emitter would emit `~CASTLE_WK` which on int32_t gives a correct 32-bit complement, but readability and portability are poor.
+**Decision:** Use explicit positive masks: `castling_rights & 14` to clear bit 0, `& 13` to clear bit 1, etc. These are unambiguous in both Python and C++.
+
 ---
 
 ## Decisions Pending / Open Questions

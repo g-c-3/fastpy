@@ -4,6 +4,39 @@ Append-only. One entry per session. Most recent at top.
 
 ---
 
+## Session 6 — Phase 3: Complete Move Generation
+**Date:** 2026-06-28
+**Status:** COMPLETE ✅
+
+### Completed
+- 8 ray generators (ray_north/south/east/west + 4 diagonals)
+- knight_attack_mask, king_attack_mask (shared by move gen + check detection)
+- generate_bishops, generate_rooks, generate_queens (ray-fill, zero allocation)
+- is_sq_attacked(sq, board, by_black) — reverse attack tracing
+- is_in_check(board) — post-make_move legality check
+- generate_castling — full castling with rights + path + attack checks
+- Updated generate_all_moves — all piece types + castling
+- Updated make_move — castling rook movement + castling rights updates (positive masks)
+- generate_legal_moves — pseudo-legal → filter by is_in_check
+- perft(board, depth) — correctness benchmark function
+- Updated alpha_beta + find_best_move → use generate_legal_moves
+- 56 tests in test_move_gen.py — 56/56 passing
+- Perft(1-4) verified: 20, 400, 8902, 197281 ✅
+
+### Key Decisions
+- D-21: Python make_move copy semantics (see DECISIONS.md)
+- D-22: Castling rights use positive masks not bitwise NOT
+
+### Files changed
+- fastpy-engine/engine.py (600 → 1602 lines)
+- fastpy-engine/tests/test_move_gen.py (new, 675 lines)
+
+### Next
+- Phase 4: Perft(5) from binary (4,865,609), UCI position parsing fixes,
+  move ordering (MVV-LVA), quiescence search
+
+---
+
 ## Session 5 — 2026-06-28
 
 **Focus:** Sprint 8 — UCI Protocol.
