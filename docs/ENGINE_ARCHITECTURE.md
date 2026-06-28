@@ -8,6 +8,17 @@ The relationship between the two repos is explained at the bottom of this file.
 
 ---
 
+## File Structure
+
+| File | Purpose | Seen by FastPy? |
+|---|---|---|
+| `engine.py` | FastPy dialect only. All compiled functions. `fastpy build engine.py` → native binary. No `__main__`, no imports, no Python-only code. | ✅ Yes |
+| `run.py` | Python-only runner. `from engine import *`. UCI loop, `_perft_py`, `_alpha_beta_py`, `_generate_legal_moves_py`. Run with `python run.py`. | ❌ No |
+| `tests/test_move_gen.py` | Move generation correctness tests. 56 tests. | ❌ No |
+| `tests/test_uci.py` | UCI protocol tests. | ❌ No |
+
+---
+
 ## Performance Targets
 
 | Implementation | NPS Target |
@@ -176,6 +187,46 @@ while temp:
     temp = temp & (temp - 1)       # pop LSB — FastPy → BLSR instruction
 ```
 
+### Sliding Piece Rays (Phase 3)
+
+Bishops, rooks, and queens use ray generators — fill from a square until hitting a blocker (inclusive, so captures work):
+
+```python
+def ray_north(sq_bb: uint64, occupied: uint64) -> uint64:
+    attacks: uint64 = 0
+    ray: uint64 = north(sq_bb)
+    while ray:
+        attacks = attacks | ray
+        if ray & occupied:
+            break
+        ray = north(ray)
+    return attacks
+```
+
+8 ray functions (N, S, E, W, NE, NW, SE, SW). Bishops use 4 diagonal rays, rooks use 4 straight rays, queens use all 8.
+
+### Check Detection
+
+```python
+def is_sq_attacked(sq: int32, board: BoardState, by_black: bool8) -> bool8:
+    # Reverse-trace all attack types from the target square
+    # by_black=True → checks black pieces; False → checks white pieces
+
+def is_in_check(board: BoardState) -> bool8:
+    # Called after make_move(). Checks if the side that JUST MOVED
+    # left their king in check (white_to_move has already flipped).
+```
+
+### Legal Move Generation
+
+```python
+def generate_legal_moves(board, moves, count) -> int32:
+    pseudo: uint64[218]           # stack array — C++ only
+    pcount: int32 = 0
+    pcount = generate_all_moves(board, pseudo, pcount)
+    # Filter: remove any move where is_in_check(new_board) is True
+```
+
 ---
 
 ## Search Architecture
@@ -194,7 +245,7 @@ def alpha_beta(
 
     moves: uint64[218]
     count: int32 = 0
-    count = generate_all_moves(board, moves, count)
+    count = generate_legal_moves(board, moves, count)
 
     if count == 0:
         return 0  # Stalemate (simplified — no checkmate detection yet)
@@ -318,9 +369,11 @@ These licenses are compatible — using a MIT tool to build GPL software is fine
 
 ## Phase Roadmap Summary
 
-| Phase | Goal | Key Feature |
-|---|---|---|
-| 1 | Functional engine | All piece move generation, make/unmake, UCI |
-| 2 | Competitive engine | Move ordering, quiescence, PST evaluation, TT |
-| 3 | Elite engine | NNUE evaluation, LMR, futility pruning |
-| 4 | 1B NPS | Lazy SMP multi-core, BMI2 magic bitboards |
+| Phase | Status | Goal | Key Features |
+|---|---|---|---|
+| 1 | ✅ Done | Functional transpiler | Parser, type system, emitter, intrinsics, CLI |
+| 2 | ✅ Done | Functional engine | All piece move gen, castling, en passant, promotions |
+| 3 | ✅ Done | Correct engine | Sliding rays, check detection, legal move filter, perft(5)=4,865,609 |
+| 4 | 🔄 Next | Competitive engine | Move ordering, quiescence search, PST evaluation, transposition table |
+| 5 | ⏳ | Elite engine | NNUE, LMR, futility pruning |
+| 6 | ⏳ | 1B NPS | Lazy SMP multi-core, BMI2 magic bitboards |

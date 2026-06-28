@@ -27,6 +27,10 @@ Python source (.py)
          │
          ▼
     main.py  (CLI — wires it all together)
+    
+> **Note:** FastPy only processes `engine.py`. The file `run.py` (Python UCI runner)
+> is never passed to the transpiler — it runs as plain Python and imports the
+> compiled functions at Python-mode runtime.
 ```
 
 ## Module Responsibilities

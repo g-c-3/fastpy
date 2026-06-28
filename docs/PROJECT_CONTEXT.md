@@ -21,9 +21,16 @@ fastpy build engine.py --optimize=O3
 
 ## Current Status
 
-**Phase 1 of `fastpy` is complete.** All 6 core modules built, 155 tests passing, CI green on Python 3.11 + 3.12.
+**FastPy transpiler (g-c-3/fastpy):** Phase 1 complete. All 6 core modules built, 155 tests passing, CI green on Python 3.11 + 3.12.
 
-**`fastpy-engine`** has README + LICENSE committed. Engine source code not yet started.
+**FastPy-Engine (g-c-3/fastpy-engine):** Phase 3 complete.
+- All piece types: pawns, knights, bishops, rooks, queens, king
+- Castling (rights tracking, path + attack checks)
+- En passant, promotions
+- Check detection (`is_sq_attacked`, `is_in_check`)
+- Legal move filtering (`generate_legal_moves`)
+- Perft(5) = 4,865,609 verified ✅ (0.25s compiled at -O3 -march=native)
+- UCI protocol via `run.py`
 
 ## Tech Stack
 
@@ -31,7 +38,6 @@ fastpy build engine.py --optimize=O3
 - **IR:** Python `@dataclass` nodes — `IRModule`, `IRFunction`, `IRClass`, `IRCall`, etc.
 - **AST reading:** Python built-in `ast` module
 - **C++ target:** C++20 with `-O3 -march=native -mpopcnt -mbmi -mbmi2 -fno-exceptions -fno-rtti`
-- **Tests:** `pytest` — 155 tests in 1.82s
 - **CI:** GitHub Actions — Python 3.11 + 3.12 matrix
 
 ## Folder Structure
@@ -66,9 +72,13 @@ fastpy/
 └── CODE_OF_CONDUCT.md
 
 fastpy-engine/
-├── README.md                      # vision, NPS targets, roadmap
-├── LICENSE                        # GPL v3
-└── engine.py                      # NOT YET CREATED
+├── engine.py                      # FastPy dialect only — compiled functions
+├── run.py                         # Python UCI runner — from engine import *
+├── tests/
+│   ├── test_uci.py                # UCI protocol tests
+│   └── test_move_gen.py           # Move generation + perft correctness
+├── README.md
+└── LICENSE                        # GPL v3
 ```
 
 ## The FastPy Speed Contract
