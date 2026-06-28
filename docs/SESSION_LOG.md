@@ -22,6 +22,11 @@ Append-only. One entry per session. Most recent at top.
 - Updated alpha_beta + find_best_move → use generate_legal_moves
 - 56 tests in test_move_gen.py — 56/56 passing
 - Perft(1-4) verified: 20, 400, 8902, 197281 ✅
+- Perft(5) = 4,865,609 verified via compiled binary (-O3 -march=native, 0.25s)
+  Method: fastpy emit → patch stub main() → g++ -O3 -march=native → run
+
+- Split engine.py / run.py (D-23): engine.py now 1408 lines (dialect only),
+  run.py 275 lines (Python UCI runner). fastpy check + build + UCI all verified.
 
 ### Key Decisions
 - D-21: Python make_move copy semantics (see DECISIONS.md)

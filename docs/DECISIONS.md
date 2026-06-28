@@ -104,6 +104,19 @@ Rationale: C++ array parameters always decay to pointers. A bare `uint64_t moves
 **Problem:** `board.castling_rights & ~CASTLE_WK` uses bitwise NOT on a Python int, which gives a negative result (Python's infinite-precision integers have no fixed width). The C++ emitter would emit `~CASTLE_WK` which on int32_t gives a correct 32-bit complement, but readability and portability are poor.
 **Decision:** Use explicit positive masks: `castling_rights & 14` to clear bit 0, `& 13` to clear bit 1, etc. These are unambiguous in both Python and C++.
 
+## D-23: engine.py / run.py file split (2026-06-28)
+**Problem:** engine.py was growing to 1600+ lines including the Python UCI
+loop and wrappers. Full file rewrites each session consumed most of the
+context window before any new code was written.
+**Decision:** Split into two files:
+- engine.py  FastPy dialect only. No __main__, no imports, no Python-only
+             code. Passed to `fastpy build`. Grows via delta patches only.
+- run.py     Python-only runner. `from engine import *`. UCI loop, Python
+             wrappers (_perft_py etc.), copy.copy() semantics. Full rewrite
+             only when UCI protocol changes.
+**Effect:** Session output is now delta patches to engine.py + occasional
+full rewrites of run.py. Context usage drops dramatically each session.
+
 ---
 
 ## Decisions Pending / Open Questions

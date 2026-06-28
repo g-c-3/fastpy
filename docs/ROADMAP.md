@@ -92,7 +92,7 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 - [x] Check detection
 - [x] Legal move filtering (king cannot move into check)
 - [x] Perft(1)=20, Perft(2)=400, Perft(3)=8902, Perft(4)=197281
-- [ ] Perft(5) from starting position = 4,865,609 nodes ← correctness benchmark
+- [x] Perft(5) from starting position = 4,865,609 nodes ← correctness benchmark ✅ (0.25s compiled)
 
 ---
 
