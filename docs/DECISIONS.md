@@ -117,6 +117,16 @@ context window before any new code was written.
 **Effect:** Session output is now delta patches to engine.py + occasional
 full rewrites of run.py. Context usage drops dramatically each session.
 
+## D-24: generate_captures uses generate_all_moves + filter (2026-06-29)
+**Decision:** `generate_captures` calls `generate_all_moves` then filters for moves landing on enemy squares (or en passant flag), with legality check via `is_in_check`.
+**Rationale:** Reuses all existing move generation logic — correct by construction. Any future bugfix to a piece generator automatically benefits quiescence search. Alternative (separate per-piece capture generators) would duplicate ~300 lines of move gen code with risk of divergence.
+**Tradeoff:** Slightly slower than purpose-built capture generators — generates and discards quiet moves. Acceptable at qsearch depth where node count is dominated by quiet search anyway. Can be optimised in Phase 5 with purpose-built generators if profiling shows it matters.
+
+## D-25: quiescence/generate_captures are compile-only; Python tests use wrappers (2026-06-29)
+**Decision:** `generate_captures()` and `quiescence()` have internal `uint64[218]` local arrays. In Python, bare `x: uint64[218]` with no initialiser is unbound (PEP 563 lazy annotations). These functions cannot be called directly from Python — same situation as `alpha_beta` and `generate_legal_moves`.
+**Resolution:** Python wrappers `_generate_captures_py` and `_quiescence_py` in `run.py` replicate the same logic using Python lists. Tests use these wrappers, not the engine functions directly.
+**Pattern:** This is the established pattern for all compiled search functions (D-20).
+
 ---
 
 ## Decisions Pending / Open Questions

@@ -21,16 +21,11 @@ fastpy build engine.py --optimize=O3
 
 ## Current Status
 
-**FastPy transpiler (g-c-3/fastpy):** Phase 1 complete. All 6 core modules built, 155 tests passing, CI green on Python 3.11 + 3.12.
-
-**FastPy-Engine (g-c-3/fastpy-engine):** Phase 3 complete.
-- All piece types: pawns, knights, bishops, rooks, queens, king
-- Castling (rights tracking, path + attack checks)
-- En passant, promotions
-- Check detection (`is_sq_attacked`, `is_in_check`)
-- Legal move filtering (`generate_legal_moves`)
+**FastPy-Engine (g-c-3/fastpy-engine):** Phase 4 in progress.
+- Phase 3 complete: all piece types, castling, en passant, promotions, legal move filter
 - Perft(5) = 4,865,609 verified ✅ (0.25s compiled at -O3 -march=native)
-- UCI protocol via `run.py`
+- Phase 4 (Search): MVV-LVA ordering, quiescence search, iterative deepening ✅
+- 117 tests passing
 
 ## Tech Stack
 

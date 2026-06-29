@@ -98,12 +98,13 @@ Sprint-level tracking. Checked = done. Unchecked = active or upcoming.
 
 ## Phase 4 — Search Improvements
 
-- [ ] Move ordering (MVV-LVA, killer moves, history heuristic)
-- [ ] Quiescence search
+- [x] Move ordering (MVV-LVA captures first, selection sort)
+- [x] Quiescence search (stand-pat + capture search at leaf nodes)
+- [x] Iterative deepening with time management (movetime, wtime/btime, infinite)
 - [ ] Piece-Square Tables (PST) evaluation
 - [ ] Null move pruning
 - [ ] Transposition table (Zobrist hashing)
-- [ ] Iterative deepening
+- [ ] Checkmate vs stalemate detection (return -INF for mate, 0 for stalemate)
 
 ---
 

@@ -4,6 +4,46 @@ Append-only. One entry per session. Most recent at top.
 
 ---
 
+## Session 7 — Phase 4: Search Improvements
+**Date:** 2026-06-29
+**Status:** COMPLETE ✅
+
+### Completed
+- `piece_at_square(sq, board) -> int32` — returns piece value for MVV-LVA
+- `mvv_lva(move, board) -> int32` — victim*10 - attacker capture priority score
+- `sort_moves(moves, count, board) -> None` — in-place selection sort (O(n²), n≤218)
+- `generate_captures(board, moves, count) -> int32` — legal captures only (for qsearch)
+- `quiescence(board, alpha, beta) -> int32` — stand-pat + capture search to avoid horizon effect
+- Updated `alpha_beta` — depth==0 now calls `quiescence()` instead of `evaluate()`; `sort_moves()` before search loop
+- `run.py` full rewrite — Phase 4 additions:
+  - `_generate_captures_py()` Python wrapper
+  - `_quiescence_py()` Python wrapper
+  - `_alpha_beta_py()` updated: calls `_quiescence_py` at depth 0, MVV-LVA move ordering
+  - `_iterative_deepening_py(board, max_time_ms, max_depth)` — IDS with info line output
+  - `uci_loop()` updated: handles `go movetime N`, `go wtime N btime N`, `go infinite`, outputs info depth lines
+- Fixed `tests/test_move_gen.py` path bug — `os.path.dirname(__file__)` pointed to tests/ not repo root
+- Fixed `tests/test_uci.py` ENGINE_CMD — was `engine.py` (no UCI loop after D-23 split); updated to `run.py`
+- `tests/test_phase4.py` NEW — 40 tests, all passing
+- **117/117 tests passing** (56 move_gen + 21 uci + 40 phase4)
+- `fastpy check engine.py` → zero errors ✅
+- `fastpy emit` → 1206 lines C++, compiles clean with g++ -O3 -march=native ✅
+
+### Key Decisions
+- D-24: generate_captures uses generate_all_moves + filter (reuse existing logic, correct by construction)
+- D-25: quiescence() and generate_captures() are compile-only; Python tests use run.py wrappers (same pattern as alpha_beta, generate_legal_moves)
+
+### Files changed
+- fastpy-engine/engine.py (1408 → 1549 lines, +141 lines)
+- fastpy-engine/run.py (275 → 488 lines, full rewrite for Phase 4)
+- fastpy-engine/tests/test_phase4.py (NEW, 410 lines, 40 tests)
+- fastpy-engine/tests/test_move_gen.py (path fix only)
+- fastpy-engine/tests/test_uci.py (ENGINE_CMD fix only)
+
+### Next
+Phase 4 continued: Piece-Square Tables (PST), null move pruning, transposition table
+
+---
+
 ## Session 6 — Phase 3: Complete Move Generation
 **Date:** 2026-06-28
 **Status:** COMPLETE ✅
