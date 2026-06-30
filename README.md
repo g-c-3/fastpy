@@ -237,8 +237,7 @@ All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md
 ## A Note on AI-Assisted Development
 
 FastPy was conceived and architecturally designed by **Gokul Chandar** through an extensive research and brainstorming process assisted by Google Gemini and  
-Claude (Anthropic). The core vision, strategic decisions, and project direction  
-are entirely human-driven.
+Claude (Anthropic). The core vision, strategic decisions, and project direction are entirely human-driven.
 
 AI tools serve as development assistants in this project — writing code modules under human architectural oversight. We believe in being transparent about this.  
 The open-source community's human contributors, testers, and reviewers are what will make FastPy real.
